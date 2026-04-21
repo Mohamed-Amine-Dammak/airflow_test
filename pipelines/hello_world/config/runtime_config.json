@@ -1,0 +1,15 @@
+﻿{
+  "schedule": null,
+  "retries": 1,
+  "timeout_minutes": 15,
+  "owner": "dataops",
+  "tags": [
+    "env:eval",
+    "pipeline:hello_world"
+  ],
+  "notifications": {
+    "on_failure_email": [
+      "ops@example.com"
+    ]
+  }
+}

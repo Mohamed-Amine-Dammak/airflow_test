@@ -1,0 +1,271 @@
+﻿name: DAG CI/CD
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "dags/**"
+      - "pipelines/**"
+      - ".github/workflows/dag-ci-cd.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    outputs:
+      changed_dags: ${{ steps.changed.outputs.changed_dags }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          pip install ruff black pytest
+
+      - name: Install Gitleaks
+        run: |
+          set -e
+          GITLEAKS_VERSION=8.30.1
+          curl -fL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" -o gitleaks.tar.gz
+          tar -xzf gitleaks.tar.gz
+          chmod +x gitleaks
+
+      - name: Detect changed DAG files
+        id: changed
+        shell: bash
+        run: |
+          BEFORE="${{ github.event.before }}"
+          AFTER="${{ github.sha }}"
+          CHANGED=$(git diff --name-only "$BEFORE" "$AFTER" | grep '^dags/.*\.py$' || true)
+          echo "Changed DAG files:"
+          echo "$CHANGED"
+          CHANGED_JSON=$(printf '%s\n' "$CHANGED" | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "changed_dags=$CHANGED_JSON" >> "$GITHUB_OUTPUT"
+
+      - name: Fail if no DAG files changed
+        shell: bash
+        run: |
+          if [ "${{ steps.changed.outputs.changed_dags }}" = "[]" ]; then
+            echo "No changed DAG python files found."
+            exit 1
+          fi
+
+      - name: Syntax check changed DAGs
+        shell: bash
+        run: |
+          for file in $(echo '${{ steps.changed.outputs.changed_dags }}' | jq -r '.[]'); do
+            echo "Checking syntax: $file"
+            python -m py_compile "$file"
+          done
+
+      - name: Lint changed DAGs
+        shell: bash
+        run: |
+          for file in $(echo '${{ steps.changed.outputs.changed_dags }}' | jq -r '.[]'); do
+            echo "Linting: $file"
+            ruff check "$file" || true
+          done
+
+      - name: Format check changed DAGs
+        shell: bash
+        run: |
+          for file in $(echo '${{ steps.changed.outputs.changed_dags }}' | jq -r '.[]'); do
+            echo "Format check: $file"
+            black --check "$file" || true
+          done
+
+      - name: Secret scan changed DAGs
+        shell: bash
+        run: |
+          for file in $(echo '${{ steps.changed.outputs.changed_dags }}' | jq -r '.[]'); do
+            echo "Secret scan: $file"
+            ./gitleaks detect --source "$file" --no-git --verbose --redact
+          done
+
+  airflow-validate:
+    runs-on: [self-hosted, Windows, X64]
+    needs: ci
+    if: needs.ci.outputs.changed_dags != '[]'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate changed DAGs only in Airflow container
+        shell: powershell
+        run: |
+          $changed = '${{ needs.ci.outputs.changed_dags }}' | ConvertFrom-Json
+          foreach ($file in $changed) {
+            $containerPath = "/opt/airflow/" + ($file -replace '\\','/')
+            Write-Host "Validating DAG file in container: $containerPath"
+
+            docker exec airflowgitfresh-airflow-scheduler-1 python -c "from airflow.models.dagbag import DagBag; import sys; dag_bag = DagBag(dag_folder='$containerPath', include_examples=False); import_errors = dag_bag.import_errors; print(f'Loaded DAGs successfully: {len(dag_bag.dags)}'); [print(f'\n- {f}\n{e}') for f, e in import_errors.items()]; sys.exit(1 if import_errors else 0)"
+          }
+
+  eval-and-promote:
+    runs-on: [self-hosted, Windows, X64]
+    needs: [ci, airflow-validate]
+    if: success() && needs.ci.outputs.changed_dags != '[]'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        shell: powershell
+        run: |
+          python -m pip install --upgrade pip
+          if (Test-Path "requirements.txt") { pip install -r requirements.txt }
+
+      - name: Build eval DAG ids and pipeline ids from changed files
+        id: ids
+        shell: powershell
+        run: |
+          $changed = '${{ needs.ci.outputs.changed_dags }}' | ConvertFrom-Json
+          $evalDagIds = New-Object System.Collections.Generic.List[string]
+          $pipelineIds = New-Object System.Collections.Generic.List[string]
+
+          foreach ($file in $changed) {
+            if ($file -match '^dags/eval/(?<logical>.+)_eval_v(?<version>\d+)\.py$') {
+              $logical = $matches['logical']
+              $version = $matches['version']
+              $dagId = "${logical}_eval_v${version}"
+              $evalDagIds.Add($dagId)
+
+              if (Test-Path "pipelines/$logical/manifest/manifest.json") {
+                if (-not $pipelineIds.Contains($logical)) {
+                  $pipelineIds.Add($logical)
+                }
+              }
+            }
+          }
+
+          $evalDagIdsJson = $evalDagIds | ConvertTo-Json -Compress
+          $pipelineIdsJson = $pipelineIds | ConvertTo-Json -Compress
+
+          if (-not $evalDagIdsJson) { $evalDagIdsJson = '[]' }
+          if (-not $pipelineIdsJson) { $pipelineIdsJson = '[]' }
+
+          "eval_dag_ids=$evalDagIdsJson" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "pipeline_ids=$pipelineIdsJson" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+          Write-Host "Eval DAG ids: $evalDagIdsJson"
+          Write-Host "Pipeline ids: $pipelineIdsJson"
+
+      - name: Wait until Airflow registers changed eval DAGs
+        if: steps.ids.outputs.eval_dag_ids != '[]'
+        shell: powershell
+        env:
+          AIRFLOW_URL: ${{ vars.AIRFLOW_URL }}
+          AIRFLOW_API_PREFIX: ${{ vars.AIRFLOW_API_PREFIX }}
+          AIRFLOW_USERNAME: ${{ secrets.AIRFLOW_USERNAME }}
+          AIRFLOW_PASSWORD: ${{ secrets.AIRFLOW_PASSWORD }}
+        run: |
+          function Get-BasicAuthHeader($username, $password) {
+            $pair = "${username}:${password}"
+            $bytes = [System.Text.Encoding]::UTF8.GetBytes($pair)
+            $b64 = [Convert]::ToBase64String($bytes)
+            return @{ Authorization = "Basic $b64" }
+          }
+
+          $dagIds = '${{ steps.ids.outputs.eval_dag_ids }}' | ConvertFrom-Json
+          $headers = Get-BasicAuthHeader $env:AIRFLOW_USERNAME $env:AIRFLOW_PASSWORD
+
+          foreach ($dagId in $dagIds) {
+            $escapedDag = [System.Uri]::EscapeDataString($dagId)
+            $url = "$($env:AIRFLOW_URL)$($env:AIRFLOW_API_PREFIX)/dags/$escapedDag"
+            $maxTries = 30
+            $ready = $false
+            for ($i = 1; $i -le $maxTries; $i++) {
+              try {
+                Invoke-RestMethod -Method Get -Uri $url -Headers $headers | Out-Null
+                Write-Host "DAG registered: $dagId"
+                $ready = $true
+                break
+              } catch {
+                Write-Host "Waiting for DAG registration ($i/$maxTries): $dagId"
+                Start-Sleep -Seconds 10
+              }
+            }
+            if (-not $ready) {
+              throw "Airflow did not register DAG in time: $dagId"
+            }
+          }
+
+      - name: Trigger changed eval DAG runs
+        if: steps.ids.outputs.eval_dag_ids != '[]'
+        shell: powershell
+        env:
+          AIRFLOW_URL: ${{ vars.AIRFLOW_URL }}
+          AIRFLOW_API_PREFIX: ${{ vars.AIRFLOW_API_PREFIX }}
+          AIRFLOW_USERNAME: ${{ secrets.AIRFLOW_USERNAME }}
+          AIRFLOW_PASSWORD: ${{ secrets.AIRFLOW_PASSWORD }}
+        run: |
+          function Get-BasicAuthHeader($username, $password) {
+            $pair = "${username}:${password}"
+            $bytes = [System.Text.Encoding]::UTF8.GetBytes($pair)
+            $b64 = [Convert]::ToBase64String($bytes)
+            return @{ Authorization = "Basic $b64"; "Content-Type" = "application/json" }
+          }
+
+          $dagIds = '${{ steps.ids.outputs.eval_dag_ids }}' | ConvertFrom-Json
+          $headers = Get-BasicAuthHeader $env:AIRFLOW_USERNAME $env:AIRFLOW_PASSWORD
+          foreach ($dagId in $dagIds) {
+            $escapedDag = [System.Uri]::EscapeDataString($dagId)
+            $url = "$($env:AIRFLOW_URL)$($env:AIRFLOW_API_PREFIX)/dags/$escapedDag/dagRuns"
+            $body = '{"note":"triggered by github actions"}'
+            Invoke-RestMethod -Method Post -Uri $url -Headers $headers -Body $body | Out-Null
+            Write-Host "Triggered eval DAG run: $dagId"
+          }
+
+      - name: Collect metrics for matching pipelines only
+        if: steps.ids.outputs.pipeline_ids != '[]'
+        shell: powershell
+        env:
+          AIRFLOW_URL: ${{ vars.AIRFLOW_URL }}
+          AIRFLOW_API_PREFIX: ${{ vars.AIRFLOW_API_PREFIX }}
+          AIRFLOW_USERNAME: ${{ secrets.AIRFLOW_USERNAME }}
+          AIRFLOW_PASSWORD: ${{ secrets.AIRFLOW_PASSWORD }}
+        run: |
+          $pipelineIds = '${{ steps.ids.outputs.pipeline_ids }}' | ConvertFrom-Json
+          foreach ($pipelineId in $pipelineIds) {
+            Write-Host "Collecting eval metrics for pipeline: $pipelineId"
+            python scripts/eval/collect_eval_metrics.py --root . --pipeline-id $pipelineId --airflow-url "$env:AIRFLOW_URL" --airflow-api-prefix "$env:AIRFLOW_API_PREFIX" --airflow-username "$env:AIRFLOW_USERNAME" --airflow-password "$env:AIRFLOW_PASSWORD" --timeout-seconds 1800 --poll-seconds 20
+          }
+
+      - name: Promote best accepted candidate for matching pipelines
+        if: steps.ids.outputs.pipeline_ids != '[]'
+        shell: powershell
+        run: |
+          $pipelineIds = '${{ steps.ids.outputs.pipeline_ids }}' | ConvertFrom-Json
+          foreach ($pipelineId in $pipelineIds) {
+            Write-Host "Promoting best accepted candidate for pipeline: $pipelineId"
+            python scripts/deployments/promote_candidate.py --root . --pipeline-id $pipelineId
+          }
+
+  cd:
+    runs-on: ubuntu-latest
+    needs: eval-and-promote
+    if: success()
+
+    steps:
+      - name: Fake deploy
+        run: echo "CD step reached"

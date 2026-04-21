@@ -1,0 +1,27 @@
+﻿{
+  "pipeline_id": "hello_world",
+  "logical_dag_id": "hello_world",
+  "current_eval_version": 1,
+  "current_prod_version": 0,
+  "champion_version": 0,
+  "previous_prod_version": null,
+  "change_type": "logic_change",
+  "status": "ready",
+  "referenced_connections": [],
+  "versions": [
+    {
+      "version": 0,
+      "file": "hello_world_v0.py",
+      "status": "champion",
+      "git_sha": "hello-v0",
+      "score_result_file": "evaluation/history/eval_v0.json"
+    },
+    {
+      "version": 1,
+      "file": "hello_world_v1.py",
+      "status": "candidate",
+      "git_sha": "hello-v1",
+      "score_result_file": "evaluation/history/eval_v1.json"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+﻿{
+  "pipeline_id": "hello_world",
+  "candidate_version": 0,
+  "champion_version": 0,
+  "change_type": "baseline",
+  "hard_gates_passed": true,
+  "scores": {
+    "reliability": 20,
+    "dependency_robustness": 18,
+    "control_flow": 14,
+    "time_behavior": 8,
+    "safety": 15,
+    "observability": 8,
+    "efficiency": 4
+  },
+  "total_score": 87,
+  "minimum_threshold": 75,
+  "champion_score": 87,
+  "decision": "champion"
+}
