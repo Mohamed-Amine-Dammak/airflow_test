@@ -1,7 +1,7 @@
 ﻿{
   "pipeline_id": "hello_world",
   "logical_dag_id": "hello_world",
-  "current_eval_version": 1,
+  "current_eval_version": 0,
   "current_prod_version": 0,
   "champion_version": 0,
   "previous_prod_version": null,
