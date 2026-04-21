@@ -1,0 +1,80 @@
+{
+  "module_type": "hybrid",
+  "dag_id": "v1test_webapp_hybrid",
+  "start_date": "2020-02-02",
+  "schedule_mode": "manual",
+  "schedule_time": "",
+  "schedule": null,
+  "tags": [
+    "hybrid",
+    "talend",
+    "n8n",
+    "etl"
+  ],
+  "talend_connection_id": "talend_cloud",
+  "n8n_connection_id": "n8n_local",
+  "retries": 3,
+  "retry_delay_minutes": 5,
+  "email_list": [
+    "amineelkpfe@gmail.com"
+  ],
+  "jobs": [
+    {
+      "id": "job_1",
+      "type": "talend",
+      "sleep_after_lookup": 5,
+      "sleep_after_trigger": 5,
+      "sleep_after_monitor": 5,
+      "poll_interval": 10,
+      "timeout": 50,
+      "job_name": "J_Test_Airflow_v1"
+    },
+    {
+      "id": "job_2",
+      "type": "n8n",
+      "sleep_after_lookup": 10,
+      "sleep_after_trigger": 10,
+      "sleep_after_monitor": 10,
+      "poll_interval": 5,
+      "timeout": 300,
+      "workflow_name": "test_airflow_v1",
+      "file_name": "input.csv",
+      "environment": "dev",
+      "use_test_webhook": true,
+      "max_attempts": 60,
+      "depends_on": [
+        "job_1"
+      ]
+    },
+    {
+      "id": "job_3",
+      "type": "talend",
+      "sleep_after_lookup": 5,
+      "sleep_after_trigger": 5,
+      "sleep_after_monitor": 5,
+      "poll_interval": 10,
+      "timeout": 50,
+      "job_name": "J_Test_Airflow_v0",
+      "depends_on": [
+        "job_2"
+      ]
+    },
+    {
+      "id": "job_4",
+      "type": "n8n",
+      "sleep_after_lookup": 10,
+      "sleep_after_trigger": 10,
+      "sleep_after_monitor": 10,
+      "poll_interval": 5,
+      "timeout": 300,
+      "workflow_name": "test_airflow",
+      "file_name": "input.csv",
+      "environment": "dev",
+      "use_test_webhook": true,
+      "max_attempts": 60,
+      "depends_on": [
+        "job_3"
+      ]
+    }
+  ]
+}
