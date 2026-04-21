@@ -1,0 +1,5 @@
+﻿{
+  "destructive_change_minimum_safety_score": 14,
+  "requires_manual_approval_for_destructive": true,
+  "block_on_missing_connection_validation": true
+}

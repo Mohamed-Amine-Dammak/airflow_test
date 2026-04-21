@@ -1,0 +1,7 @@
+﻿{
+  "policy_name": "config_only",
+  "description": "Config-only changes can promote if valid and above minimum threshold.",
+  "requires_hard_gates": true,
+  "requires_beating_champion": false,
+  "minimum_threshold": 70
+}

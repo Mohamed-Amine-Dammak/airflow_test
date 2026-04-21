@@ -1,0 +1,10 @@
+﻿{
+  "profile": "trigger_pipeline_profile",
+  "change_type": "logic_change",
+  "metrics": {
+    "parse_ok": true,
+    "tests_passed": true,
+    "runtime_delta_percent": -4.5,
+    "new_connections": []
+  }
+}

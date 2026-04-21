@@ -1,0 +1,20 @@
+﻿{
+  "pipeline_id": "customer_sales",
+  "candidate_version": 1,
+  "champion_version": 0,
+  "change_type": "logic_change",
+  "hard_gates_passed": true,
+  "scores": {
+    "reliability": 22,
+    "dependency_robustness": 18,
+    "control_flow": 14,
+    "time_behavior": 12,
+    "safety": 10,
+    "observability": 8,
+    "efficiency": 4
+  },
+  "total_score": 88,
+  "minimum_threshold": 75,
+  "champion_score": 84,
+  "decision": "promote"
+}

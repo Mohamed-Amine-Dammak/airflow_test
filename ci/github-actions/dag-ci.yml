@@ -1,0 +1,8 @@
+﻿name: DAG CI
+on: [push, pull_request]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python scripts/validation/validate_pipeline_structure.py --root .

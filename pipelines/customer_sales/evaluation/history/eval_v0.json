@@ -1,0 +1,20 @@
+﻿{
+  "pipeline_id": "customer_sales",
+  "candidate_version": 0,
+  "champion_version": 0,
+  "change_type": "baseline",
+  "hard_gates_passed": true,
+  "scores": {
+    "reliability": 21,
+    "dependency_robustness": 17,
+    "control_flow": 14,
+    "time_behavior": 11,
+    "safety": 10,
+    "observability": 7,
+    "efficiency": 4
+  },
+  "total_score": 84,
+  "minimum_threshold": 75,
+  "champion_score": 84,
+  "decision": "champion"
+}

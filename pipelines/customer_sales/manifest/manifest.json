@@ -1,0 +1,30 @@
+﻿{
+  "pipeline_id": "customer_sales",
+  "logical_dag_id": "customer_sales",
+  "current_eval_version": 1,
+  "current_prod_version": 0,
+  "champion_version": 0,
+  "previous_prod_version": null,
+  "change_type": "logic_change",
+  "status": "evaluated",
+  "referenced_connections": [
+    "powerbi_default",
+    "gcs_default"
+  ],
+  "versions": [
+    {
+      "version": 0,
+      "file": "customer_sales_v0.py",
+      "status": "champion",
+      "git_sha": "abc123",
+      "score_result_file": "evaluation/history/eval_v0.json"
+    },
+    {
+      "version": 1,
+      "file": "customer_sales_v1.py",
+      "status": "evaluated",
+      "git_sha": "def456",
+      "score_result_file": "evaluation/history/eval_v1.json"
+    }
+  ]
+}

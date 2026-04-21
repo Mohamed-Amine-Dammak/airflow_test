@@ -1,0 +1,16 @@
+﻿name: DAG Eval Validate
+on: [workflow_dispatch]
+jobs:
+  eval-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python scripts/deployments/publish_eval_dag.py --root .
+      - run: |
+          python scripts/eval/collect_eval_metrics.py \
+            --root . \
+            --airflow-url "${{ vars.AIRFLOW_URL }}" \
+            --airflow-api-prefix "${{ vars.AIRFLOW_API_PREFIX }}" \
+            --airflow-username "${{ secrets.AIRFLOW_USERNAME }}" \
+            --airflow-password "${{ secrets.AIRFLOW_PASSWORD }}"
+      - run: python scripts/deployments/promote_candidate.py --root .

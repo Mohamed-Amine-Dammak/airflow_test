@@ -1,0 +1,8 @@
+﻿{
+  "policy_name": "connector_change",
+  "description": "Connector changes require connection validation plus score threshold.",
+  "requires_hard_gates": true,
+  "requires_connection_validation": true,
+  "requires_beating_champion": false,
+  "minimum_threshold": 78
+}

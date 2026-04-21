@@ -1,0 +1,8 @@
+﻿name: airflow-validate
+on: [workflow_dispatch]
+jobs:
+  airflow-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python scripts/validation/validate_dag_parse.py --root .

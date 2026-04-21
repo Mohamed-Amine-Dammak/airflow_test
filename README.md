@@ -1,213 +1,41 @@
-# Apache Airflow – Docker Setup
+﻿# Airflow2 Orchestration Platform
 
-This project contains a **Dockerized Apache Airflow environment** for orchestrating workflows and ETL pipelines.
+This repository implements a version-aware DAG CI/CD scaffold.
 
-It includes:
+## Core design
 
-* `dags/` → Airflow DAGs
-* `plugins/` → Custom plugins and operators
-* `config/` → Configuration files
-* `logs/` → Airflow logs (not committed to Git)
-* `docker-compose.yaml` → Airflow services definition
+- One repo, one Airflow instance.
+- Airflow scans deployable DAG views in `dags/`.
+- Historical DAG versions live in `pipelines/<logical_dag_id>/versions/`.
+- Scoring and promotion logic live outside DAG runtime code.
+- Promotion is allowed only when candidate is accepted by policy and comparison rules.
+- Rollback is metadata-driven via pipeline manifest fields.
 
----
+## Key directories
 
-## 📌 Project Structure
+- `pipelines/`: source-of-truth history, manifest, runtime config, evaluation results.
+- `dags/eval`: candidate DAGs currently under evaluation.
+- `dags/prod`: champion DAGs currently in production.
+- `scoring/`: policies, profiles, thresholds, and decision logic.
+- `scripts/`: validation, deployment, evaluation, and connection lifecycle tooling.
 
-```
-.
-├── config/
-├── dags/
-├── logs/
-├── plugins/
-├── docker-compose.yaml
-└── README.md
-```
+## Migration note
 
----
+Existing DAGs under `dags/` were not removed. New `eval/` and `prod/` views were added for controlled rollout.
 
-## 🚀 Getting Started
+## Dynamic Eval and Promotion
 
-### 1️⃣ Prerequisites
-
-* Docker
-* Docker Compose
-* Git
-
----
-
-### 2️⃣ Clone the repository
+Use these commands after publishing candidate DAGs to `dags/eval`:
 
 ```bash
-git clone https://github.com/Mohamed-Amine-Dammak/airflow.git
-cd airflow
+python scripts/deployments/publish_eval_dag.py --root . --pipeline-id <pipeline_id>
+python scripts/eval/collect_eval_metrics.py --root . --airflow-url http://localhost:8081 --airflow-api-prefix /api/v2 --airflow-username <user> --airflow-password <pass>
+python scripts/deployments/promote_candidate.py --root .
 ```
 
----
+What this does:
 
-### 3️⃣ Start Airflow
-
-```bash
-docker compose up -d
-```
-
-First time only (if needed):
-
-```bash
-docker compose up airflow-init
-```
-
----
-
-### 4️⃣ Access Airflow UI
-
-Open your browser:
-
-```
-http://localhost:8080
-```
-
-Default credentials (if not changed):
-
-```
-Username: airflow
-Password: airflow
-```
-
----
-
-## 📂 Adding a DAG
-
-1. Place your DAG file inside:
-
-```
-dags/
-```
-
-2. Airflow will automatically detect it.
-3. Refresh the UI and enable the DAG.
-
----
-
-## 🔐 Environment Variables
-
-If needed, create a `.env` file:
-
-```
-AIRFLOW_UID=50000
-```
-
-(Do not commit `.env` to GitHub)
-
----
-
-## 🧪 Testing
-
-To check logs:
-
-```bash
-docker compose logs -f
-```
-
-To stop services:
-
-```bash
-docker compose down
-```
-
----
-
-## 📊 Use Cases
-
-This Airflow setup can be used for:
-
-* ETL orchestration
-* Triggering n8n workflows
-* Triggering Talend Cloud jobs
-* Monitoring external APIs
-* Cloud Run integrations
-* BigQuery / GCS automation
-* DevOps scheduling tasks
-
----
-
-## 🛠 Tech Stack
-
-* Apache Airflow
-* Docker
-* Docker Compose
-* Python
-* REST APIs
-
----
-
-## 📌 Best Practices
-
-* Avoid heavy code at DAG top-level
-* Use `@dag` decorator (Airflow 2+ / 3 style)
-* Store credentials in Airflow Connections
-* Use retries and email alerts
-* Keep logs and secrets out of Git
-
----
-
-# Airflow Connections Configuration
-
-Airflow connections can be defined in a `connections.json` file and automatically synced to your Airflow instance. Each connection has a unique `conn_id` and required fields.
-
-## Example `connections.json`
-
-```jsonc
-{
-    "_comment": "This file defines Airflow connections. Each key is a 'conn_id' used in Airflow.",
-    
-    "my_postgres": {
-        "_comment": "Postgres database connection example",
-        "conn_type": "postgres",          // Type of connection: postgres, mysql, etc.
-        "host": "localhost",              // Database host
-        "login": "username",              // Database username
-        "password": "password",           // Database password
-        "schema": "mydb",                 // Database schema or name
-        "extra": "{\"port\": 5432}"       // Optional extra JSON parameters (e.g., port, sslmode)
-    },
-
-    "my_api": {
-        "_comment": "HTTP API connection example",
-        "conn_type": "http",              // Type of connection: http, https, etc.
-        "login": "user",                  // API username (if required)
-        "password": "pass",               // API password or token (if required)
-        "extra": "{\"headers\":{\"Authorization\":\"Bearer TOKEN\"}}"  
-        // Optional extra JSON, e.g., HTTP headers for Authorization
-    }
-}
-````
-
-## Field Descriptions
-
-| Field       | Description                                                                                      |
-| ----------- | ------------------------------------------------------------------------------------------------ |
-| `conn_id`   | Unique identifier for this connection, referenced in Airflow DAGs.                               |
-| `conn_type` | Type of connection. Must match the Airflow provider installed (e.g., postgres, mysql, http, s3). |
-| `host`      | Hostname or IP address of the service (optional for some types like HTTP).                       |
-| `login`     | Username or API user.                                                                            |
-| `password`  | Password, token, or secret. Can be replaced with an environment variable for security.           |
-| `schema`    | Database name or schema (optional).                                                              |
-| `extra`     | Additional configuration in JSON format. Examples: port, SSL mode, HTTP headers.                 |
-| `_comment`  | Optional field to document the purpose of each connection. Ignored by the sync script.           |
-
-## Usage Notes
-
-* **Sync to Airflow**: Use the `sync_connections.py` script to automatically create or update these connections inside your Airflow instance.
-* **Secrets Management**: Do **not** store sensitive passwords in GitHub plaintext. Use environment variables or an encrypted file.
-* **Extensible**: You can add more connections by adding new keys to the JSON file following the same format.
-
-💡 **Tip**: For passwords, you can use placeholders like:
-
-```jsonc
-"password": "${MY_POSTGRES_PASSWORD}"
-```
-
-Then your Python sync script can read the value from environment variables instead of storing plaintext credentials.
-
-#### 👤 Mohamed Amine Dammak, Engineering Student – Data Engineering & AI
-
+- waits for candidate eval DAG run completion in Airflow
+- fetches runtime/task metrics through Airflow API
+- scores candidate vs champion using policy by change type
+- promotes only the best accepted candidate version

@@ -1,0 +1,5 @@
+﻿{
+  "default_minimum_threshold": 75,
+  "min_hard_gate_pass_rate": 1.0,
+  "tie_breaker": "prefer_current_champion"
+}

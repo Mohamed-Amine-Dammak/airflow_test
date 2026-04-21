@@ -1,0 +1,8 @@
+﻿{
+  "policy_name": "destructive_change",
+  "description": "Destructive changes require stricter safety checks and higher threshold.",
+  "requires_hard_gates": true,
+  "requires_beating_champion": true,
+  "requires_safety_override": true,
+  "minimum_threshold": 85
+}

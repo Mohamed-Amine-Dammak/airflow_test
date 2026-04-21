@@ -1,0 +1,8 @@
+﻿{
+  "policy_name": "logic_change",
+  "description": "Logic changes must pass hard gates and beat or match champion score.",
+  "requires_hard_gates": true,
+  "requires_beating_champion": true,
+  "allow_equal_to_champion": true,
+  "minimum_threshold": 75
+}

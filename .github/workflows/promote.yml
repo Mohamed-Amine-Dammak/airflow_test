@@ -1,0 +1,8 @@
+﻿name: promote
+on: [workflow_dispatch]
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python scripts/deployments/promote_candidate.py --root .

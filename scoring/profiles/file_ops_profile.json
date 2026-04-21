@@ -1,0 +1,12 @@
+﻿{
+  "profile_name": "file_ops_profile",
+  "weights": {
+    "reliability": 0.2,
+    "dependency_robustness": 0.2,
+    "control_flow": 0.15,
+    "time_behavior": 0.1,
+    "safety": 0.2,
+    "observability": 0.1,
+    "efficiency": 0.05
+  }
+}
