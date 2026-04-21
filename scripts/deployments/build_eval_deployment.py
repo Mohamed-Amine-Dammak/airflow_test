@@ -38,8 +38,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-from airflow import DAG
-from airflow.operators.python import PythonOperator
+from airflow.sdk import dag, task
 
 LOGICAL_DAG_ID = "{logical_dag_id}"
 EVAL_VERSION = {eval_version}
@@ -82,21 +81,28 @@ def run_candidate_logic(**_context):
 
 
 runtime_config = _load_runtime_config()
-with DAG(
+
+
+@dag(
     dag_id=EVAL_DAG_ID,
-    start_date=datetime(2024, 1, 1),
     schedule=None,
+    start_date=datetime(2024, 1, 1),
     catchup=False,
     default_args={{
         "owner": runtime_config.get("owner", "dataops"),
         "retries": int(runtime_config.get("retries", 1)),
     }},
     tags={tags_line} + runtime_config.get("tags", []),
-) as dag:
-    evaluate_candidate = PythonOperator(
-        task_id="evaluate_candidate",
-        python_callable=run_candidate_logic,
-    )
+)
+def eval_candidate_dag():
+    @task(task_id="evaluate_candidate")
+    def evaluate_candidate():
+        return run_candidate_logic()
+
+    evaluate_candidate()
+
+
+eval_candidate_dag()
 '''
 
 

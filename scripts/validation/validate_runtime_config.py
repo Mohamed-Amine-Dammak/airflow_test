@@ -1,4 +1,4 @@
-﻿\"\"\"Starter script: validate_runtime_config.\"\"\"
+﻿"""Starter script: validate_runtime_config."""
 
 from __future__ import annotations
 
@@ -7,13 +7,13 @@ from pathlib import Path
 
 
 def run(root: Path) -> int:
-    \"\"\"TODO: implement validate_runtime_config workflow.\"\"\"
-    print(f\"[TODO] {root} :: validate_runtime_config not fully implemented yet\")
+    """TODO: implement validate_runtime_config workflow."""
+    print(f"[TODO] {root} :: validate_runtime_config not fully implemented yet")
     return 0
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description=\"validate_runtime_config\")
+    parser = argparse.ArgumentParser(description="validate_runtime_config")
     parser.add_argument("--root", default=".", help="Repository root")
     return parser
 
@@ -25,3 +25,5 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+

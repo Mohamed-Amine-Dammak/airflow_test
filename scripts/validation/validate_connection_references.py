@@ -1,4 +1,4 @@
-﻿\"\"\"Starter script: validate_connection_references.\"\"\"
+﻿"""Starter script: validate_connection_references."""
 
 from __future__ import annotations
 
@@ -7,13 +7,13 @@ from pathlib import Path
 
 
 def run(root: Path) -> int:
-    \"\"\"TODO: implement validate_connection_references workflow.\"\"\"
-    print(f\"[TODO] {root} :: validate_connection_references not fully implemented yet\")
+    """TODO: implement validate_connection_references workflow."""
+    print(f"[TODO] {root} :: validate_connection_references not fully implemented yet")
     return 0
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description=\"validate_connection_references\")
+    parser = argparse.ArgumentParser(description="validate_connection_references")
     parser.add_argument("--root", default=".", help="Repository root")
     return parser
 
@@ -25,3 +25,5 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+
